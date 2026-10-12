@@ -279,3 +279,5 @@ python scripts/create_admin.py --email admin@faceatm.local
 | `/api/admin/verify` | `GET` | Bearer Token (Admin) | Validates Firebase ID token and admin privilege |
 | `/api/admin/summary` | `GET` | Bearer Token (Admin) | Returns Phase 1 & 2 dashboard metric counts |
 | `/api/admin/test-smtp` | `POST` | Bearer Token (Admin) | Safely probes Gmail SMTP connection and authentication |
+#   F A C E - A T M - A N A L Y S I S  
+ 
