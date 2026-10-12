@@ -60,9 +60,11 @@
 		}
 	}
 
+	const backendBaseUrl = (import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+
 	async function fetchIncidentImage() {
 		try {
-			const imgRes = await fetch(`/api/atm/security-alert/${incidentId}/image?token=${encodeURIComponent(token)}`);
+			const imgRes = await fetch(`${backendBaseUrl}/api/atm/security-alert/${incidentId}/image?token=${encodeURIComponent(token)}`);
 			if (imgRes.ok) {
 				const blob = await imgRes.blob();
 				imageUrl = URL.createObjectURL(blob);
