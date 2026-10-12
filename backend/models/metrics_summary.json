@@ -1,0 +1,62 @@
+{
+  "timestamp": "2026-10-12T01:47:48.808990",
+  "pipeline": "YuNet + MiniFASNetV2 + SFace",
+  "sample_size_notice": {
+    "is_statistically_significant": false,
+    "evaluation_scope": "micro_sanity_check_test_set",
+    "practical_warning": "N=3 is a practical baseline set. 100% accuracy validates pipeline execution only, not general population performance.",
+    "statistical_note": "This check is a practical engineering guideline, not a universal statistical significance boundary."
+  },
+  "anti_spoofing": {
+    "model": "MiniFASNetV2 (ONNX)",
+    "license": "Apache-2.0",
+    "threshold": 0.6,
+    "total_samples": 3,
+    "live_samples": 1,
+    "spoof_samples": 2,
+    "accuracy": 1.0,
+    "accuracy_95_ci_wilson": [
+      0.4385,
+      1.0
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1_score": 1.0,
+    "apcer_false_accept_spoofs": 0.0,
+    "bpcer_false_reject_live": 0.0,
+    "confusion_matrix": {
+      "tn": 2,
+      "fp": 0,
+      "fn": 0,
+      "tp": 1
+    }
+  },
+  "face_matching": {
+    "model": "SFace (ONNX)",
+    "license": "Apache-2.0",
+    "threshold": 0.4,
+    "total_pairs": 3,
+    "genuine_pairs": 1,
+    "impostor_pairs": 2,
+    "accuracy": 1.0,
+    "accuracy_95_ci_wilson": [
+      0.4385,
+      1.0
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1_score": 1.0,
+    "far_false_accept_rate": 0.0,
+    "frr_false_reject_rate": 0.0,
+    "confusion_matrix": {
+      "tn": 2,
+      "fp": 0,
+      "fn": 0,
+      "tp": 1
+    }
+  },
+  "security_policy": {
+    "fail_closed": true,
+    "bypassable_by_admin": false
+  }
+}

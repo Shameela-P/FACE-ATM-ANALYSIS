@@ -1,0 +1,4 @@
+pair_id,img1_path,img2_path,ground_truth,pair_type,subject1_id,subject2_id,notes
+PAIR_001,face_matching/subject1_session1.jpg,face_matching/subject1_session2.jpg,genuine,same_subject,subj_01,subj_01,Subject 1 multi-session capture angle/lighting variation
+PAIR_002,face_matching/subject1_session1.jpg,face_matching/subject2_session1.jpg,impostor,different_subject,subj_01,subj_02,Distinct subjects comparison (Subject 1 vs Subject 2)
+PAIR_003,face_matching/subject1_session2.jpg,face_matching/subject2_session1.jpg,impostor,different_subject,subj_01,subj_02,Distinct subjects comparison (Subject 1 session 2 vs Subject 2)

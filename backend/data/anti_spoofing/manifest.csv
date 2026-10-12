@@ -1,0 +1,4 @@
+sample_id,filepath,ground_truth,label_code,attack_type,subject_id,source,license,notes
+AS_001,anti_spoofing/live/image_T1.jpg,live,1,genuine_live,subj_t1,Minivision Silent-Face-Anti-Spoofing Benchmark,Apache-2.0,Live genuine capture with ambient natural lighting
+AS_002,anti_spoofing/spoof/image_F1.jpg,spoof,0,2d_printed_paper,subj_f1,Minivision Silent-Face-Anti-Spoofing Benchmark,Apache-2.0,Presentation attack using printed paper photograph
+AS_003,anti_spoofing/spoof/image_F2.jpg,spoof,0,2d_screen_replay,subj_f2,Minivision Silent-Face-Anti-Spoofing Benchmark,Apache-2.0,Presentation attack replay displayed on mobile phone screen

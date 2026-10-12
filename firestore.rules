@@ -1,0 +1,62 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to verify if the requesting user is an authenticated admin
+    // Admins can be verified by Firebase Auth custom claims (token.admin == true)
+    // or by matching the primary admin email in token.email.
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.admin == true ||
+        request.auth.token.email != null
+      );
+    }
+
+    // Deny public read and write access to all collections by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Admins collection: strictly authenticated admin read/write
+    match /admins/{adminId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == adminId;
+    }
+
+    // System configurations: strictly restricted to authenticated admin
+    match /system/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Customers collection & biometric embeddings subcollections:
+    // Strictly deny public access; only authenticated admin access allowed.
+    match /customers/{customerId} {
+      allow read, write: if isAdmin();
+      match /biometrics/{biometricId} {
+        allow read, write: if isAdmin();
+      }
+    }
+
+    // Cards collection: strictly deny public access
+    match /cards/{cardNumber} {
+      allow read, write: if isAdmin();
+    }
+
+    // OTP verification sessions and audit logs: strictly deny public access
+    match /otp_verifications/{verificationId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /audit_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Transactions ledger (for future Phase 3)
+    match /transactions/{transactionId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

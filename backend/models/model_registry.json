@@ -1,0 +1,58 @@
+{
+  "system": "Face ATM Biometric Pipeline",
+  "pipeline_version": "Phase 4.0.0",
+  "last_updated": "2026-10-12T00:00:00Z",
+  "models": [
+    {
+      "role": "Face Detection & Landmark Localization",
+      "model_name": "YuNet",
+      "model_file": "face_detection_yunet_2023mar.onnx",
+      "version": "2023mar",
+      "framework": "ONNX",
+      "license": "MIT License",
+      "source": "OpenCV Zoo / ShiqiYu/libfacedetection",
+      "input_dimensions": "Dynamic [1, 3, H, W] (typically 320x320 to 640x640)",
+      "color_format": "BGR",
+      "preprocessing": "None (raw BGR array with dynamic setInputSize)",
+      "output_format": "Faces array [x, y, w, h, x_re, y_re, x_le, y_le, x_nt, y_nt, x_rc, y_rc, x_lc, y_lc, confidence]",
+      "confidence_threshold": 0.65
+    },
+    {
+      "role": "Anti-Spoofing Presentation Attack Detection (PAD)",
+      "model_name": "MiniFASNetV2",
+      "model_file": "face_antispoof_minifasnet.onnx",
+      "version": "v2",
+      "framework": "ONNX",
+      "license": "Apache-2.0 License",
+      "source": "Minivision Silent-Face-Anti-Spoofing / yakhyo",
+      "input_dimensions": "[1, 3, 80, 80]",
+      "color_format": "BGR",
+      "preprocessing": "Context crop (1.2x and 1.5x scale bounding box margin), resize to 80x80, raw float BGR [0, 255]",
+      "output_format": "Logits [Class 0: 2D Spoof, Class 1: Real Face, Class 2: 2D Replay/Screen]",
+      "decision_metric": "Softmax probability of Class 1 >= 0.60 (fail-closed)",
+      "default_threshold": 0.60
+    },
+    {
+      "role": "Face Recognition & Biometric Embedding",
+      "model_name": "SFace",
+      "model_file": "face_recognition_sface_2021dec.onnx",
+      "version": "2021dec",
+      "framework": "ONNX",
+      "license": "Apache-2.0 License",
+      "source": "OpenCV Zoo / Shenzhen Institute of Artificial Intelligence and Robotics for Society",
+      "input_dimensions": "[1, 3, 112, 112]",
+      "color_format": "BGR",
+      "preprocessing": "5-point facial landmark alignment via cv2.FaceRecognizerSF.alignCrop",
+      "output_format": "128-dimensional unit hypersphere feature vector (L2 normalized)",
+      "decision_metric": "Cosine Similarity: dot(v1, v2) / (||v1|| * ||v2||)",
+      "default_threshold": 0.40
+    }
+  ],
+  "fail_closed_policy": {
+    "detection_missing_or_failed": "Denied (HTTP 400)",
+    "liveness_model_missing": "Denied (HTTP 503)",
+    "liveness_spoof_or_uncertain": "Denied & lockout incremented (HTTP 403)",
+    "face_mismatch": "Denied & lockout incremented (HTTP 401)",
+    "session_granted_only_when": "YuNet face count == 1 AND Anti-Spoofing score >= 0.60 AND Cosine Similarity >= 0.40"
+  }
+}

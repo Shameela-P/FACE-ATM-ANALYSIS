@@ -1,0 +1,56 @@
+# Environment variables & secrets
+.env
+.env.local
+.env.*.local
+serviceAccountKey.json
+firebase-admin-key.json
+*.pem
+*.key
+
+# Python
+models/*.onnx
+backend/models/*.onnx
+*.onnx
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Node & SvelteKit
+node_modules/
+.svelte-kit/
+build/
+package/
+.env.vault
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

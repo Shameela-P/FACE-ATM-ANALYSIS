@@ -1,0 +1,250 @@
+/* ========================================================
+   Face Authentication & Customer Transaction System
+   Brand Design System & Global Styles (Modern Banking Theme)
+   ======================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Modern Premium Banking Color Palette */
+  --color-navy: #101828;
+  --color-navy-dark: #0b101b;
+  --color-navy-light: #1d2939;
+
+  --color-teal: #0F766E;
+  --color-teal-hover: #0d655e;
+  --color-teal-dark: #115e59;
+  --color-teal-subtle: rgba(15, 118, 110, 0.12);
+  --color-teal-glow: rgba(15, 118, 110, 0.28);
+
+  --color-bg-light: #F4F7FA;
+  --color-surface: #FFFFFF;
+  --color-surface-subtle: #F8FAFC;
+
+  --color-white: #FFFFFF;
+  --color-accent-green: #22C55E;
+  --color-accent-green-hover: #16a34a;
+  --color-accent-green-subtle: rgba(34, 197, 94, 0.12);
+
+  --color-text: #1F2937;
+  --color-text-muted: #4B5563;
+  --color-text-light: #6B7280;
+  --color-border: #E5E7EB;
+  --color-border-subtle: #E2E8F0;
+
+  /* Backward Compatibility Aliases for Components */
+  --color-forest: var(--color-navy);
+  --color-forest-dark: var(--color-navy-dark);
+  --color-forest-light: var(--color-navy-light);
+
+  --color-terracotta: var(--color-teal);
+  --color-terracotta-hover: var(--color-teal-hover);
+  --color-terracotta-subtle: var(--color-teal-subtle);
+
+  --color-cream: var(--color-bg-light);
+  --color-cream-surface: var(--color-surface-subtle);
+  --color-cream-light: var(--color-white);
+
+  --color-gray: var(--color-text-muted);
+  --color-gray-light: var(--color-text-light);
+  --color-gray-border: var(--color-border);
+
+  /* Typography */
+  --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Elevation Shadows with Navy Undertones */
+  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-md: 0 4px 8px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.04);
+  --shadow-lg: 0 12px 24px -4px rgba(16, 24, 40, 0.12), 0 4px 8px -2px rgba(16, 24, 40, 0.04);
+  --shadow-hover: 0 16px 32px -4px rgba(16, 24, 40, 0.16), 0 6px 12px -2px rgba(16, 24, 40, 0.06);
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  min-height: 100vh;
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background-color: var(--color-bg-light);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  color: var(--color-navy);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  background: none;
+}
+
+input, button, select, textarea {
+  font-size: 1rem;
+}
+
+/* Base Utility Classes */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: var(--color-teal);
+  color: var(--color-white);
+  padding: 0.85rem 1.6rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all var(--transition-normal);
+  box-shadow: 0 4px 14px rgba(15, 118, 110, 0.28);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-teal-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(15, 118, 110, 0.36);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: var(--color-white);
+  color: var(--color-navy);
+  border: 1.5px solid var(--color-border);
+  padding: 0.8rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all var(--transition-normal);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  border-color: var(--color-teal);
+  color: var(--color-teal);
+  background-color: var(--color-teal-subtle);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-secondary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.badge-active {
+  background-color: var(--color-accent-green-subtle);
+  color: #15803d;
+}
+
+.badge-teal {
+  background-color: var(--color-teal-subtle);
+  color: var(--color-teal);
+}
+
+.badge-terracotta {
+  background-color: var(--color-teal-subtle);
+  color: var(--color-teal);
+}
+
+.badge-coming-soon {
+  background-color: rgba(107, 114, 128, 0.12);
+  color: var(--color-text-light);
+}
+
+/* Common Animation Keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Reduced Motion Preference Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
