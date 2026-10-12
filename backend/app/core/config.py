@@ -50,6 +50,10 @@ class Settings(BaseSettings):
         default=None,
         description="Path to Firebase Admin SDK service account credentials JSON file",
     )
+    FIREBASE_SERVICE_ACCOUNT_JSON: Optional[str] = Field(
+        default=None,
+        description="Raw JSON string or Base64 encoded JSON string of Firebase service account credentials",
+    )
 
     # Gmail SMTP Configuration (Server-side authenticated SMTP via STARTTLS)
     SMTP_HOST: str = Field(

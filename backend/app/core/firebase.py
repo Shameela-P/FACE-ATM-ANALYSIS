@@ -58,6 +58,23 @@ def get_firebase_admin_app():
                 _init_error_message = f"Failed to create Firebase credentials from '{service_account_path.name}': {exc}"
                 logger.error("%s", _init_error_message)
                 return None
+        elif settings.FIREBASE_SERVICE_ACCOUNT_JSON:
+            try:
+                raw_json = settings.FIREBASE_SERVICE_ACCOUNT_JSON.strip()
+                if not raw_json.startswith("{"):
+                    import base64
+                    try:
+                        raw_json = base64.b64decode(raw_json).decode("utf-8")
+                    except Exception:
+                        pass
+                sa_data = json.loads(raw_json)
+                sa_project_id = sa_data.get("project_id")
+                cred = credentials.Certificate(sa_data)
+                logger.info("Loaded Firebase service account credentials from FIREBASE_SERVICE_ACCOUNT_JSON")
+            except Exception as exc:
+                _init_error_message = f"Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON: {exc}"
+                logger.error("%s", _init_error_message)
+                return None
 
         configured_project_id = settings.FIREBASE_PROJECT_ID
 
@@ -129,10 +146,11 @@ def get_firebase_status() -> Dict[str, Any]:
     from app.core.config import settings
     ready = is_firebase_admin_ready()
     sa_path = settings.resolve_service_account_path()
+    sa_configured = bool((sa_path and sa_path.exists()) or bool(settings.FIREBASE_SERVICE_ACCOUNT_JSON))
     return {
         "initialized": ready,
         "project_id": settings.FIREBASE_PROJECT_ID or "auto-detected",
-        "service_account_configured": bool(sa_path and sa_path.exists()),
+        "service_account_configured": sa_configured,
         "status_detail": _init_error_message if not ready else "operational",
     }
 
