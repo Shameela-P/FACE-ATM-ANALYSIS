@@ -11,6 +11,9 @@ firebase-admin-key.json
 models/*.onnx
 backend/models/*.onnx
 *.onnx
+!backend/models/face_detection_yunet_2023mar.onnx
+!backend/models/face_recognition_sface_2021dec.onnx
+!backend/models/face_antispoof_minifasnet.onnx
 __pycache__/
 *.py[cod]
 *$py.class
