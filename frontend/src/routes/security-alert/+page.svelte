@@ -1,7 +1,7 @@
 <script>
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/state';
-	import { publicApiRequest } from '../../lib/api.js';
+	import { publicApiRequest } from '#lib/api.js';
 
 	let incidentId = $state('');
 	let token = $state('');
