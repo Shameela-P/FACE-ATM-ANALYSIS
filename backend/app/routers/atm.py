@@ -264,7 +264,8 @@ async def authenticate_face_login(payload: FaceLoginRequest):
         capture_result = face_service.verify_liveness_and_extract_embedding(
             image_bytes=image_bytes,
             consent_obtained=True,
-            liveness_threshold=settings.FACE_ANTISPOOF_THRESHOLD,
+            check_liveness=settings.FACE_ANTISPOOF_ENABLED,
+            liveness_threshold=settings.FACE_ANTISPOOF_THRESHOLD if settings.FACE_ANTISPOOF_ENABLED else None,
         )
     except FaceProcessingError as exc:
         if exc.status_code == 403:

@@ -134,6 +134,10 @@ class Settings(BaseSettings):
         default=0.40,
         description="Cosine similarity threshold for SFace face matching (OpenCV standard ~0.363 - 0.40)",
     )
+    FACE_ANTISPOOF_ENABLED: bool = Field(
+        default=False,
+        description="Enable physical anti-spoofing verification (MiniFASNet); disabled by default for webcam demo/development",
+    )
     FACE_ANTISPOOF_THRESHOLD: float = Field(
         default=0.60,
         description="Liveness confidence threshold for anti-spoofing verification (0.0 to 1.0)",

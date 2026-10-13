@@ -232,11 +232,11 @@ class FaceBiometricService:
             scale_scores = []
             for scale in (1.2, 1.5):
                 cx, cy = x + w / 2.0, y + h / 2.0
-                nw, nh = w * scale, h * scale
-                x1 = max(0, int(cx - nw / 2.0))
-                y1 = max(0, int(cy - nh / 2.0))
-                x2 = min(img_w, int(cx + nw / 2.0))
-                y2 = min(img_h, int(cy + nh / 2.0))
+                side = max(w, h) * scale
+                x1 = max(0, int(cx - side / 2.0))
+                y1 = max(0, int(cy - side / 2.0))
+                x2 = min(img_w, int(cx + side / 2.0))
+                y2 = min(img_h, int(cy + side / 2.0))
 
                 crop = img_bgr[y1:y2, x1:x2]
                 if crop.size == 0 or crop.shape[0] < 10 or crop.shape[1] < 10:
@@ -288,20 +288,22 @@ class FaceBiometricService:
         self,
         image_bytes: bytes,
         consent_obtained: bool,
+        check_liveness: Optional[bool] = None,
         liveness_threshold: Optional[float] = None,
     ) -> Dict[str, Any]:
         """
         Execute full Phase 4 biometric verification pipeline in strict sequence:
         1. Verify explicit customer consent.
         2. Detect single face using YuNet ONNX.
-        3. Execute Anti-Spoofing PAD check using MiniFASNetV2 (fail-closed).
+        3. Execute Anti-Spoofing PAD check using MiniFASNetV2 (fail-closed) if requested.
         4. If liveness passes, extract 128-dim facial feature embedding using SFace ONNX.
         5. Return validated embedding and liveness metadata.
         """
+        do_check = check_liveness if check_liveness is not None else True
         return self.process_and_extract_embedding(
             image_bytes=image_bytes,
             consent_obtained=consent_obtained,
-            check_liveness=True,
+            check_liveness=do_check,
             liveness_threshold=liveness_threshold,
         )
 

@@ -253,12 +253,20 @@
 			}
 		} catch (err) {
 			console.error('Face verification failed:', err);
-			if (err.status === 403) {
+			const isLockedOut = err.status === 403 && (
+				err.message?.toLowerCase().includes('temporarily locked') ||
+				(err.message?.toLowerCase().includes('locked') && !err.message?.toLowerCase().includes('remaining'))
+			);
+			if (isLockedOut) {
 				// Lockout triggered
 				stopCamera();
 				step = 'LOCKED';
 				startLockoutCountdown(900);
 				errorMessage = err.message || 'Card locked due to maximum failed attempts.';
+			} else if (err.status === 403) {
+				// Intermediate failed attempt with attempts remaining
+				errorMessage = err.message || 'Face verification failed. Please try again.';
+				scanStatusText = err.message || 'Face verification failed. Please try again.';
 			} else if (err.status === 400 && (err.message?.includes('Face Not Recognizable') || err.message?.includes('No face detected'))) {
 				faceNotRecognizable = true;
 				faceFeedbackMessage = 'Face Not Recognizable — Please show your full face to the camera.';
