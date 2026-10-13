@@ -707,7 +707,7 @@
 					{:else if verificationSession?.emailDelivery?.delivered}
 						<div class="sandbox-success-note">
 							<small>
-								✅ <strong>Email Dispatched:</strong> Verification code sent via Gmail SMTP from <strong>{verificationSession.emailDelivery.sender || 'Face ATM'}</strong>.
+								✅ <strong>Email Dispatched:</strong> Verification code sent via {verificationSession.emailDelivery.provider || 'Gmail SMTP'} from <strong>{verificationSession.emailDelivery.sender || 'Face ATM'}</strong>.
 							</small>
 						</div>
 					{/if}
@@ -1068,7 +1068,7 @@
 				<div class="email-banner-content">
 					<strong>Card Activation Notification:</strong>
 					{#if cardEmailStatus?.delivered}
-						<span>The unique card number was emailed to <strong>{enrollmentResult.email}</strong> via Gmail SMTP.</span>
+						<span>The unique card number was emailed to <strong>{enrollmentResult.email}</strong> via {cardEmailStatus?.provider || 'Gmail SMTP'}.</span>
 					{:else}
 						<span>
 							Email delivery status: {cardEmailStatus?.error || 'Pending delivery'}.

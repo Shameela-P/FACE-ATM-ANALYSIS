@@ -11,14 +11,42 @@ from email.message import EmailMessage
 from email.utils import formataddr, make_msgid
 import asyncio
 import logging
+import base64
 from typing import Dict, Any, Optional, List
+import httpx
 from app.core.config import settings
 
 logger = logging.getLogger("face_atm.email_service")
 
 
 class GmailSMTPEmailService:
-    """Service wrapper for interacting reliably with Gmail SMTP over STARTTLS."""
+    """Service wrapper for interacting reliably with transactional email APIs (Resend, Brevo, SendGrid) and Gmail SMTP."""
+
+    @property
+    def provider(self) -> str:
+        """
+        Return active email provider.
+        Options: 'resend', 'brevo', 'sendgrid', 'smtp'.
+        'auto' detects configured provider in priority: Resend -> Brevo -> SendGrid -> SMTP.
+        """
+        configured = (getattr(settings, "EMAIL_PROVIDER", "auto") or "auto").strip().lower()
+        if configured in ("resend", "brevo", "sendgrid", "smtp"):
+            return configured
+
+        # Auto-detection
+        resend_key = (getattr(settings, "RESEND_API_KEY", None) or "").strip()
+        if resend_key and resend_key != "re_your_resend_api_key_here":
+            return "resend"
+
+        brevo_key = (getattr(settings, "BREVO_API_KEY", None) or "").strip()
+        if brevo_key and brevo_key != "your_brevo_key_here":
+            return "brevo"
+
+        sendgrid_key = (getattr(settings, "SENDGRID_API_KEY", None) or "").strip()
+        if sendgrid_key and sendgrid_key != "SG.your_key_here":
+            return "sendgrid"
+
+        return "smtp"
 
     @property
     def smtp_host(self) -> str:
@@ -43,43 +71,89 @@ class GmailSMTPEmailService:
     @property
     def sender_email(self) -> str:
         """Return configured outgoing sender address."""
-        from_email = settings.SMTP_FROM or settings.SMTP_USER or "pavithra.workss@gmail.com"
-        return from_email.strip().strip('"\'')
+        p = self.provider
+        if p == "resend":
+            from_email = getattr(settings, "RESEND_FROM_EMAIL", None) or getattr(settings, "EMAIL_FROM", None)
+            if not from_email:
+                if settings.SMTP_FROM and not settings.SMTP_FROM.lower().endswith("@gmail.com"):
+                    from_email = settings.SMTP_FROM
+                else:
+                    from_email = "onboarding@resend.dev"
+            return from_email.strip().strip('"\'')
+        elif p in ("brevo", "sendgrid"):
+            from_email = (
+                getattr(settings, "EMAIL_FROM", None)
+                or settings.SMTP_FROM
+                or settings.SMTP_USER
+                or "faceAtm2026@gmail.com"
+            )
+            return from_email.strip().strip('"\'')
+        else:
+            from_email = settings.SMTP_FROM or settings.SMTP_USER or "pavithra.workss@gmail.com"
+            return from_email.strip().strip('"\'')
 
     @property
     def timeout(self) -> int:
-        """Return SMTP operation timeout in seconds."""
+        """Return SMTP/HTTP operation timeout in seconds."""
         return getattr(settings, "SMTP_TIMEOUT_SECONDS", 15)
 
     @property
     def is_configured(self) -> bool:
-        """
-        Check if Gmail SMTP is configured with host, user, and password.
-        Requires an App Password (not the user's personal Google password).
-        """
-        return bool(
-            self.smtp_host
-            and self.smtp_port
-            and self.smtp_user
-            and self.smtp_password
-            and len(self.smtp_password) > 0
-            and self.smtp_password != "YOUR_GMAIL_APP_PASSWORD"
-        )
+        """Check if active email provider has required credentials configured."""
+        p = self.provider
+        if p == "resend":
+            key = (getattr(settings, "RESEND_API_KEY", None) or "").strip()
+            return bool(key and key != "re_your_resend_api_key_here")
+        elif p == "brevo":
+            key = (getattr(settings, "BREVO_API_KEY", None) or "").strip()
+            return bool(key and key != "your_brevo_key_here")
+        elif p == "sendgrid":
+            key = (getattr(settings, "SENDGRID_API_KEY", None) or "").strip()
+            return bool(key and key != "SG.your_key_here")
+        else:
+            return bool(
+                self.smtp_host
+                and self.smtp_port
+                and self.smtp_user
+                and self.smtp_password
+                and len(self.smtp_password) > 0
+                and self.smtp_password != "YOUR_GMAIL_APP_PASSWORD"
+            )
 
     def get_status(self) -> Dict[str, Any]:
         """
         Return safe, non-sensitive health/configuration status.
-        Crucial security rule: NEVER expose the actual password.
-        Does NOT claim delivery has succeeded merely because configuration exists.
+        Crucial security rule: NEVER expose passwords or API keys.
         """
-        configured = self.is_configured
+        p = self.provider
+        if p == "resend":
+            provider_label = "Resend API"
+            host_val = "api.resend.com"
+            port_val = 443
+            user_val = "API Key Authenticated"
+        elif p == "brevo":
+            provider_label = "Brevo API"
+            host_val = "api.brevo.com"
+            port_val = 443
+            user_val = "API Key Authenticated"
+        elif p == "sendgrid":
+            provider_label = "SendGrid API"
+            host_val = "api.sendgrid.com"
+            port_val = 443
+            user_val = "API Key Authenticated"
+        else:
+            provider_label = "Gmail SMTP"
+            host_val = self.smtp_host
+            port_val = self.smtp_port
+            user_val = self.smtp_user or "Not configured"
+
         return {
-            "provider": "Gmail SMTP",
-            "configured": configured,
-            "host": self.smtp_host,
-            "port": self.smtp_port,
+            "provider": provider_label,
+            "configured": self.is_configured,
+            "host": host_val,
+            "port": port_val,
             "sender_email": self.sender_email or "Not configured",
-            "user": self.smtp_user or "Not configured",
+            "user": user_val,
             "phase_2_ready": True,
         }
 
@@ -159,6 +233,7 @@ class GmailSMTPEmailService:
                 "id": msg_id,
                 "recipient": recipient_email,
                 "sender": self.sender_email,
+                "provider": "Gmail SMTP",
             }
         except smtplib.SMTPAuthenticationError as exc:
             logger.error("Gmail SMTP authentication failure for %s: %s", self.smtp_user, getattr(exc, "smtp_error", str(exc)))
@@ -170,14 +245,19 @@ class GmailSMTPEmailService:
                 ),
                 "recipient": recipient_email,
                 "sender": self.sender_email,
+                "provider": "Gmail SMTP",
             }
         except (smtplib.SMTPConnectError, ConnectionRefusedError, TimeoutError, OSError) as exc:
             logger.error("Gmail SMTP connection failure to %s:%s: %s", self.smtp_host, self.smtp_port, exc)
             return {
                 "delivered": False,
-                "error": f"Failed to connect to SMTP server ({self.smtp_host}:{self.smtp_port}). Connection timed out or refused.",
+                "error": (
+                    f"Failed to connect to SMTP server ({self.smtp_host}:{self.smtp_port}). Connection timed out or refused. "
+                    "Render blocks outbound SMTP traffic on ports 25, 465, 587. Configure RESEND_API_KEY or BREVO_API_KEY to send emails over HTTPS."
+                ),
                 "recipient": recipient_email,
                 "sender": self.sender_email,
+                "provider": "Gmail SMTP",
             }
         except smtplib.SMTPRecipientsRefused as exc:
             logger.error("Gmail SMTP recipient refused for %s: %s", recipient_email, exc)
@@ -186,6 +266,7 @@ class GmailSMTPEmailService:
                 "error": f"Recipient address rejected by mail server: {recipient_email}.",
                 "recipient": recipient_email,
                 "sender": self.sender_email,
+                "provider": "Gmail SMTP",
             }
         except smtplib.SMTPException as exc:
             logger.error("Gmail SMTP delivery error for %s: %s", recipient_email, exc)
@@ -194,6 +275,7 @@ class GmailSMTPEmailService:
                 "error": f"SMTP delivery failure: {str(exc)}",
                 "recipient": recipient_email,
                 "sender": self.sender_email,
+                "provider": "Gmail SMTP",
             }
         except Exception as exc:
             logger.error("Unexpected error during SMTP dispatch to %s: %s", recipient_email, exc)
@@ -202,6 +284,7 @@ class GmailSMTPEmailService:
                 "error": f"Email delivery error: {str(exc)}",
                 "recipient": recipient_email,
                 "sender": self.sender_email,
+                "provider": "Gmail SMTP",
             }
         finally:
             if server:
@@ -209,6 +292,393 @@ class GmailSMTPEmailService:
                     server.quit()
                 except Exception:
                     pass
+
+    async def _send_resend_api(
+        self,
+        recipient_email: str,
+        subject: str,
+        html_content: str,
+        plain_content: Optional[str] = None,
+        attachments: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        """Dispatch email via Resend HTTPS REST API."""
+        api_key = (getattr(settings, "RESEND_API_KEY", None) or "").strip()
+        if not api_key:
+            logger.warning("Resend API key missing; cannot deliver email to %s", recipient_email)
+            return {
+                "delivered": False,
+                "error": "Resend API key is not configured. Set RESEND_API_KEY in backend environment.",
+                "recipient": recipient_email,
+                "sender": self.sender_email,
+                "provider": "Resend API",
+            }
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+
+        from_addr = self.sender_email
+        from_header = f"Face ATM <{from_addr}>" if "<" not in from_addr else from_addr
+        payload: Dict[str, Any] = {
+            "from": from_header,
+            "to": [recipient_email],
+            "subject": subject,
+            "html": html_content,
+        }
+        if plain_content:
+            payload["text"] = plain_content
+
+        if attachments:
+            formatted_attachments = []
+            for att in attachments:
+                content_bytes = att.get("content")
+                if content_bytes:
+                    formatted_attachments.append({
+                        "filename": att.get("filename", "attachment.jpg"),
+                        "content": base64.b64encode(content_bytes).decode("ascii"),
+                    })
+            if formatted_attachments:
+                payload["attachments"] = formatted_attachments
+
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post("https://api.resend.com/emails", json=payload, headers=headers)
+
+            if response.status_code in (200, 201):
+                res_data = response.json()
+                msg_id = res_data.get("id", "resend_dispatched")
+                logger.info("Successfully dispatched email to %s via Resend API (id: %s)", recipient_email, msg_id)
+                return {
+                    "delivered": True,
+                    "id": msg_id,
+                    "recipient": recipient_email,
+                    "sender": self.sender_email,
+                    "provider": "Resend API",
+                }
+            elif response.status_code in (401, 403):
+                logger.error("Resend API authentication failure (status %d)", response.status_code)
+                return {
+                    "delivered": False,
+                    "error": "Resend API authentication failed. Please verify your RESEND_API_KEY.",
+                    "recipient": recipient_email,
+                    "sender": self.sender_email,
+                    "provider": "Resend API",
+                }
+            else:
+                err_text = ""
+                try:
+                    err_data = response.json()
+                    err_text = err_data.get("message") or err_data.get("error") or str(err_data)
+                except Exception:
+                    err_text = response.text[:200]
+                logger.error("Resend API error (%d): %s", response.status_code, err_text)
+                return {
+                    "delivered": False,
+                    "error": f"Resend API error ({response.status_code}): {err_text}",
+                    "recipient": recipient_email,
+                    "sender": self.sender_email,
+                    "provider": "Resend API",
+                }
+        except httpx.TimeoutException:
+            logger.error("Resend API timeout connecting to api.resend.com for %s", recipient_email)
+            return {
+                "delivered": False,
+                "error": "Resend API request timed out.",
+                "recipient": recipient_email,
+                "sender": self.sender_email,
+                "provider": "Resend API",
+            }
+        except Exception as exc:
+            logger.error("Resend API network exception: %s", exc)
+            return {
+                "delivered": False,
+                "error": f"Failed to send email via Resend API: {str(exc)}",
+                "recipient": recipient_email,
+                "sender": self.sender_email,
+                "provider": "Resend API",
+            }
+
+    async def _send_brevo_api(
+        self,
+        recipient_email: str,
+        subject: str,
+        html_content: str,
+        plain_content: Optional[str] = None,
+        attachments: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        """Dispatch email via Brevo HTTPS REST API."""
+        api_key = (getattr(settings, "BREVO_API_KEY", None) or "").strip()
+        if not api_key:
+            logger.warning("Brevo API key missing; cannot deliver email to %s", recipient_email)
+            return {
+                "delivered": False,
+                "error": "Brevo API key is not configured. Set BREVO_API_KEY in backend environment.",
+                "recipient": recipient_email,
+                "sender": self.sender_email,
+                "provider": "Brevo API",
+            }
+
+        headers = {
+            "api-key": api_key,
+            "Content-Type": "application/json",
+            "accept": "application/json",
+        }
+
+        payload: Dict[str, Any] = {
+            "sender": {"name": "Face ATM", "email": self.sender_email},
+            "to": [{"email": recipient_email}],
+            "subject": subject,
+            "htmlContent": html_content,
+        }
+        if plain_content:
+            payload["textContent"] = plain_content
+
+        if attachments:
+            formatted_attachments = []
+            for att in attachments:
+                content_bytes = att.get("content")
+                if content_bytes:
+                    formatted_attachments.append({
+                        "name": att.get("filename", "attachment.jpg"),
+                        "content": base64.b64encode(content_bytes).decode("ascii"),
+                    })
+            if formatted_attachments:
+                payload["attachment"] = formatted_attachments
+
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
+
+            if response.status_code in (200, 201):
+                res_data = response.json()
+                msg_id = res_data.get("messageId", "brevo_dispatched")
+                logger.info("Successfully dispatched email to %s via Brevo API (id: %s)", recipient_email, msg_id)
+                return {
+                    "delivered": True,
+                    "id": msg_id,
+                    "recipient": recipient_email,
+                    "sender": self.sender_email,
+                    "provider": "Brevo API",
+                }
+            elif response.status_code in (401, 403):
+                logger.error("Brevo API authentication failure (status %d)", response.status_code)
+                return {
+                    "delivered": False,
+                    "error": "Brevo API authentication failed. Please verify your BREVO_API_KEY.",
+                    "recipient": recipient_email,
+                    "sender": self.sender_email,
+                    "provider": "Brevo API",
+                }
+            else:
+                err_text = ""
+                try:
+                    err_data = response.json()
+                    err_text = err_data.get("message") or str(err_data)
+                except Exception:
+                    err_text = response.text[:200]
+                logger.error("Brevo API error (%d): %s", response.status_code, err_text)
+                return {
+                    "delivered": False,
+                    "error": f"Brevo API error ({response.status_code}): {err_text}",
+                    "recipient": recipient_email,
+                    "sender": self.sender_email,
+                    "provider": "Brevo API",
+                }
+        except httpx.TimeoutException:
+            logger.error("Brevo API timeout connecting to api.brevo.com for %s", recipient_email)
+            return {
+                "delivered": False,
+                "error": "Brevo API request timed out.",
+                "recipient": recipient_email,
+                "sender": self.sender_email,
+                "provider": "Brevo API",
+            }
+        except Exception as exc:
+            logger.error("Brevo API network exception: %s", exc)
+            return {
+                "delivered": False,
+                "error": f"Failed to send email via Brevo API: {str(exc)}",
+                "recipient": recipient_email,
+                "sender": self.sender_email,
+                "provider": "Brevo API",
+            }
+
+    async def _send_sendgrid_api(
+        self,
+        recipient_email: str,
+        subject: str,
+        html_content: str,
+        plain_content: Optional[str] = None,
+        attachments: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        """Dispatch email via SendGrid HTTPS REST API."""
+        api_key = (getattr(settings, "SENDGRID_API_KEY", None) or "").strip()
+        if not api_key:
+            return {
+                "delivered": False,
+                "error": "SendGrid API key is not configured. Set SENDGRID_API_KEY in backend environment.",
+                "recipient": recipient_email,
+                "sender": self.sender_email,
+                "provider": "SendGrid API",
+            }
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+
+        payload: Dict[str, Any] = {
+            "personalizations": [{"to": [{"email": recipient_email}]}],
+            "from": {"email": self.sender_email, "name": "Face ATM"},
+            "subject": subject,
+            "content": [
+                {"type": "text/html", "value": html_content}
+            ],
+        }
+        if plain_content:
+            payload["content"].insert(0, {"type": "text/plain", "value": plain_content})
+
+        if attachments:
+            formatted_attachments = []
+            for att in attachments:
+                content_bytes = att.get("content")
+                if content_bytes:
+                    m = att.get("maintype", "application")
+                    s = att.get("subtype", "octet-stream")
+                    formatted_attachments.append({
+                        "content": base64.b64encode(content_bytes).decode("ascii"),
+                        "filename": att.get("filename", "attachment.jpg"),
+                        "type": f"{m}/{s}",
+                        "disposition": "attachment",
+                    })
+            if formatted_attachments:
+                payload["attachments"] = formatted_attachments
+
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post("https://api.sendgrid.com/v3/mail/send", json=payload, headers=headers)
+
+            if response.status_code in (200, 202):
+                msg_id = response.headers.get("X-Message-Id", "sendgrid_dispatched")
+                return {
+                    "delivered": True,
+                    "id": msg_id,
+                    "recipient": recipient_email,
+                    "sender": self.sender_email,
+                    "provider": "SendGrid API",
+                }
+            elif response.status_code in (401, 403):
+                return {
+                    "delivered": False,
+                    "error": "SendGrid API authentication failed. Verify SENDGRID_API_KEY.",
+                    "recipient": recipient_email,
+                    "sender": self.sender_email,
+                    "provider": "SendGrid API",
+                }
+            else:
+                return {
+                    "delivered": False,
+                    "error": f"SendGrid API error ({response.status_code}): {response.text[:200]}",
+                    "recipient": recipient_email,
+                    "sender": self.sender_email,
+                    "provider": "SendGrid API",
+                }
+        except Exception as exc:
+            return {
+                "delivered": False,
+                "error": f"Failed to send email via SendGrid API: {str(exc)}",
+                "recipient": recipient_email,
+                "sender": self.sender_email,
+                "provider": "SendGrid API",
+            }
+
+    async def _dispatch_email(
+        self,
+        recipient_email: str,
+        subject: str,
+        html_content: str,
+        plain_content: Optional[str] = None,
+        attachments: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        """Route outgoing email to configured provider (Resend, Brevo, SendGrid, or Gmail SMTP)."""
+        p = self.provider
+        if p == "resend":
+            return await self._send_resend_api(
+                recipient_email=recipient_email,
+                subject=subject,
+                html_content=html_content,
+                plain_content=plain_content,
+                attachments=attachments,
+            )
+        elif p == "brevo":
+            return await self._send_brevo_api(
+                recipient_email=recipient_email,
+                subject=subject,
+                html_content=html_content,
+                plain_content=plain_content,
+                attachments=attachments,
+            )
+        elif p == "sendgrid":
+            return await self._send_sendgrid_api(
+                recipient_email=recipient_email,
+                subject=subject,
+                html_content=html_content,
+                plain_content=plain_content,
+                attachments=attachments,
+            )
+        else:
+            return await asyncio.to_thread(
+                self._send_email_sync,
+                recipient_email=recipient_email,
+                subject=subject,
+                html_content=html_content,
+                plain_content=plain_content,
+                attachments=attachments,
+            )
+
+    async def _test_resend_connection(self) -> Dict[str, Any]:
+        """Safe probe for Resend API key authentication."""
+        api_key = (getattr(settings, "RESEND_API_KEY", None) or "").strip()
+        if not api_key:
+            return {"success": False, "error": "RESEND_API_KEY is not configured.", "provider": "Resend API"}
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                res = await client.get("https://api.resend.com/api-keys", headers={"Authorization": f"Bearer {api_key}"})
+            if res.status_code == 200:
+                return {"success": True, "message": "Successfully authenticated with Resend API over HTTPS.", "provider": "Resend API"}
+            return {"success": False, "error": f"Resend API authentication returned status {res.status_code}.", "provider": "Resend API"}
+        except Exception as exc:
+            return {"success": False, "error": f"Resend API connection test failed: {str(exc)}", "provider": "Resend API"}
+
+    async def _test_brevo_connection(self) -> Dict[str, Any]:
+        """Safe probe for Brevo API key authentication."""
+        api_key = (getattr(settings, "BREVO_API_KEY", None) or "").strip()
+        if not api_key:
+            return {"success": False, "error": "BREVO_API_KEY is not configured.", "provider": "Brevo API"}
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                res = await client.get("https://api.brevo.com/v3/account", headers={"api-key": api_key, "accept": "application/json"})
+            if res.status_code == 200:
+                data = res.json()
+                return {"success": True, "message": f"Successfully authenticated with Brevo API as {data.get('email', 'account')}.", "provider": "Brevo API"}
+            return {"success": False, "error": f"Brevo API authentication returned status {res.status_code}.", "provider": "Brevo API"}
+        except Exception as exc:
+            return {"success": False, "error": f"Brevo API connection test failed: {str(exc)}", "provider": "Brevo API"}
+
+    async def _test_sendgrid_connection(self) -> Dict[str, Any]:
+        """Safe probe for SendGrid API key authentication."""
+        api_key = (getattr(settings, "SENDGRID_API_KEY", None) or "").strip()
+        if not api_key:
+            return {"success": False, "error": "SENDGRID_API_KEY is not configured.", "provider": "SendGrid API"}
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                res = await client.get("https://api.sendgrid.com/v3/scopes", headers={"Authorization": f"Bearer {api_key}"})
+            if res.status_code == 200:
+                return {"success": True, "message": "Successfully authenticated with SendGrid API over HTTPS.", "provider": "SendGrid API"}
+            return {"success": False, "error": f"SendGrid API authentication returned status {res.status_code}.", "provider": "SendGrid API"}
+        except Exception as exc:
+            return {"success": False, "error": f"SendGrid API connection test failed: {str(exc)}", "provider": "SendGrid API"}
 
     async def send_otp_email(
         self,
@@ -275,8 +745,7 @@ class GmailSMTPEmailService:
         </html>
         """
 
-        return await asyncio.to_thread(
-            self._send_email_sync,
+        return await self._dispatch_email(
             recipient_email=recipient_email,
             subject=subject,
             html_content=html_content,
@@ -370,8 +839,7 @@ class GmailSMTPEmailService:
         </html>
         """
 
-        return await asyncio.to_thread(
-            self._send_email_sync,
+        return await self._dispatch_email(
             recipient_email=recipient_email,
             subject=subject,
             html_content=html_content,
@@ -567,8 +1035,7 @@ class GmailSMTPEmailService:
                 "filename": fn,
             })
 
-        return await asyncio.to_thread(
-            self._send_email_sync,
+        return await self._dispatch_email(
             recipient_email=recipient_email,
             subject=subject,
             html_content=html_content,
@@ -630,8 +1097,16 @@ class GmailSMTPEmailService:
                     pass
 
     async def test_connection(self) -> Dict[str, Any]:
-        """Async wrapper for test_connection_sync."""
-        return await asyncio.to_thread(self.test_connection_sync)
+        """Async connection probe supporting both SMTP and transactional HTTP providers."""
+        p = self.provider
+        if p == "resend":
+            return await self._test_resend_connection()
+        elif p == "brevo":
+            return await self._test_brevo_connection()
+        elif p == "sendgrid":
+            return await self._test_sendgrid_connection()
+        else:
+            return await asyncio.to_thread(self.test_connection_sync)
 
 
 # Global singleton service instance

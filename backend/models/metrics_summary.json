@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-10-12T01:47:48.808990",
+  "timestamp": "2026-10-12T16:37:17.866959",
   "pipeline": "YuNet + MiniFASNetV2 + SFace",
   "sample_size_notice": {
     "is_statistically_significant": false,
     "evaluation_scope": "micro_sanity_check_test_set",
-    "practical_warning": "N=3 is a practical baseline set. 100% accuracy validates pipeline execution only, not general population performance.",
-    "statistical_note": "This check is a practical engineering guideline, not a universal statistical significance boundary."
+    "warning": "N=3 is statistically underpowered. 100% accuracy validates pipeline wiring only, not population performance.",
+    "rule_of_three_explanation": "At least 300 negative samples required to claim FAR <= 1% at 95% confidence."
   },
   "anti_spoofing": {
     "model": "MiniFASNetV2 (ONNX)",

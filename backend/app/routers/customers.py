@@ -178,6 +178,13 @@ async def initiate_customer_registration(
         expiry_minutes=settings.OTP_EXPIRY_MINUTES,
     )
 
+    delivered = bool(email_delivery.get("delivered"))
+    msg = (
+        f"Verification code sent to {payload.email}."
+        if delivered
+        else f"Failed to deliver verification code: {email_delivery.get('error', 'Delivery failed')}."
+    )
+
     return RegistrationInitiateResponse(
         verificationId=verification_id,
         email=payload.email,
@@ -185,7 +192,7 @@ async def initiate_customer_registration(
         expiresInSeconds=settings.OTP_EXPIRY_MINUTES * 60,
         cooldownSeconds=settings.OTP_RESEND_COOLDOWN_SECONDS,
         emailDelivery=email_delivery,
-        message=f"Verification code sent to {payload.email}.",
+        message=msg,
     )
 
 
@@ -265,12 +272,17 @@ async def resend_customer_otp(
         expiry_minutes=settings.OTP_EXPIRY_MINUTES,
     )
 
+    delivered = bool(email_delivery.get("delivered"))
     return {
-        "success": True,
+        "success": delivered,
         "expiresInSeconds": settings.OTP_EXPIRY_MINUTES * 60,
         "cooldownSeconds": settings.OTP_RESEND_COOLDOWN_SECONDS,
         "emailDelivery": email_delivery,
-        "message": f"A new verification code has been dispatched to {recipient_email}.",
+        "message": (
+            f"A new verification code has been dispatched to {recipient_email}."
+            if delivered
+            else f"Failed to dispatch verification code: {email_delivery.get('error', 'Delivery failed')}."
+        ),
     }
 
 

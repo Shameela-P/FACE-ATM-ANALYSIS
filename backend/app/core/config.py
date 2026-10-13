@@ -81,6 +81,32 @@ class Settings(BaseSettings):
         description="Connection and operation timeout in seconds for SMTP",
     )
 
+    # Transactional Email Provider Configuration (HTTPS API for cloud hosts like Render blocking SMTP ports)
+    EMAIL_PROVIDER: str = Field(
+        default="auto",
+        description="Active email provider: 'auto', 'resend', 'brevo', 'sendgrid', or 'smtp'",
+    )
+    RESEND_API_KEY: Optional[str] = Field(
+        default=None,
+        description="Resend API Key (re_...) for transactional email over HTTPS",
+    )
+    RESEND_FROM_EMAIL: Optional[str] = Field(
+        default=None,
+        description="Sender address for Resend (e.g. onboarding@resend.dev or verified custom domain)",
+    )
+    BREVO_API_KEY: Optional[str] = Field(
+        default=None,
+        description="Brevo API Key for transactional email over HTTPS",
+    )
+    SENDGRID_API_KEY: Optional[str] = Field(
+        default=None,
+        description="SendGrid API Key for transactional email over HTTPS",
+    )
+    EMAIL_FROM: Optional[str] = Field(
+        default=None,
+        description="Generic sender address for transactional email providers",
+    )
+
     # Phase 2 Security & Biometric Configuration
     DATA_ENCRYPTION_KEY: Optional[str] = Field(
         default=None,
